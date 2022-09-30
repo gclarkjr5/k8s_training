@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init-db
+  labels:
+    app.kubernetes.io/part-of: airflow
+spec:
+  template:
+    spec:
+      containers:
+        - name: airflow-init
+          image: apache/airflow:2.3.4
+          envFrom:
+            - configMapRef:
+                name: airflow-cfg
+            - secretRef:
+                name: airflow-secrets
+          command:
+            - airflow
+            - db
+            - init
+      restartPolicy: Never
+  backoffLimit: 10
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init-user
+  labels:
+    app.kubernetes.io/part-of: airflow
+spec:
+  template:
+    spec:
+      containers:
+        - name: airflow-init
+          image: apache/airflow:2.3.4
+          envFrom:
+            - configMapRef:
+                name: airflow-cfg
+            - secretRef:
+                name: airflow-secrets
+          command:
+            - airflow
+            - users
+            - create
+            - "-e"
+            - airflow@airflow.com
+            - "-f"
+            - airflow
+            - "-l"
+            - airflow
+            - "-p"
+            - airflow
+            - "-r"
+            - Admin
+            - "-u"
+            - airflow
+      restartPolicy: Never
+  backoffLimit: 10
+
+

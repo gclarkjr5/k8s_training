@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  labels:
+    app.kubernetes.io/part-of: airflow
+  annotations:
+    xccelerated.io/owner: mbrouns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow-scheduler
+    spec:
+      containers:
+        - name: airflow-scheduler
+          image: apache/airflow:2.3.4
+          command:
+            - airflow
+            - scheduler
+          envFrom:
+            - configMapRef:
+                name: airflow-cfg
+            - secretRef:
+                name: airflow-secrets
+          volumeMounts:
+            - mountPath: /opt/airflow/dags
+              name: dags
+        - name: dag-fetcher
+          image: amazon/aws-cli:2.7.33
+          command: ["sh","-c","while true; do aws s3 sync s3://xcc-example-dags /opt/airflow/dags --delete --no-sign-request; sleep 30; done"]
+          volumeMounts:
+            - mountPath: /opt/airflow/dags
+              name: dags
+      volumes:
+        - name: dags
+          emptyDir: {}

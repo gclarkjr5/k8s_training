@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: metadata-db
+spec:
+  selector:
+    matchLabels:
+      app: metadata-db # has to match .spec.template.metadata.labels
+  serviceName: metadata-db
+  replicas: 1 # by default is 1
+  # minReadySeconds: 10 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: metadata-db # has to match .spec.selector.matchLabels
+    spec:
+      securityContext:
+        fsGroup: 999
+      # terminationGracePeriodSeconds: 10
+      containers:
+      - name: metadata-db
+        image: bitnami/postgresql:13.8.0
+        ports:
+        - containerPort: 5432
+          name: db
+        env:
+          - name: POSTGRESQL_REPLICATION_MODE
+            value: master
+        envFrom:
+            - configMapRef:
+                name: postgres-cfg
+            - secretRef:
+                name: postgres-secrets
+        volumeMounts:
+        - name: postgres-volume
+          mountPath: /bitnami/postgresql
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # storageClassName: hostPath
+      resources:
+        requests:
+          storage: 200Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-db
+  labels:
+    app.kubernetes.io/part-of: airflow
+spec:
+  selector:
+    app: metadata-db
+  ports:
+    - name: db
+      port: 5432
+  type: LoadBalancer

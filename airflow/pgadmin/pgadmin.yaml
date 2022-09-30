@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgadmin-service
+  labels:
+    app.kubernetes.io/part-of: airflow
+spec:
+  selector:
+    app: pgadmin
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: http
+  type: NodePort
+  # It may be tempting to set the service type to LoadBalancer
+  # here, and then run multiple replicas of pgAdmin. This will
+  # not work as you expect! pgAdmin maintains a pool of database
+  # connections within each instance, and neither this or session
+  # data can be shared between multiple instances 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+  labels:
+    app.kubernetes.io/part-of: airflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgadmin
+  template:
+    metadata:
+      labels:
+        app: pgadmin
+    spec:
+      containers:
+        - name: pgadmin
+          image: dpage/pgadmin4:6.13
+          env:
+            - name: PGADMIN_DEFAULT_EMAIL
+              value: "user@domain.com"
+            - name: PGADMIN_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgadmin-password
+                  key: password
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
